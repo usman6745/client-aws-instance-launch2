@@ -55,7 +55,7 @@ slackSend baseUrl: 'https://opstree.slack.com/services/hooks/jenkins-ci/',
  //channel: 'ot-meesho',
  channel: '#pradeep',
  color: 'good',
- message: 'Jenkins-Slack Intigrated, Instance is Launched-/nThe Instance ID is ' + my_id + my_id2,
+ message: 'Jenkins-Slack Intigrated, Instance is Launched- The Instance ID is ' + my_id + my_id2,
  teamDomain: 'opstree',
  //tokenCredentialId: 'slack-token-ec2-test'
  //tokenCredentialId: 'slack-token'
