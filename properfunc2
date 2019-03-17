@@ -32,7 +32,7 @@ pipeline {
             ./properfunc.sh $AMI_ID $SUBNET $REGION $NAME $NAME_VALUE $Number_Of_Instances $SECURITY_GROUP_ID $KEYPAIR $INSTANCE_TYPE
         ''' 
        
-         cat InstanceId
+         
 }
 }   
 }
