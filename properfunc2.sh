@@ -1,0 +1,104 @@
+pipeline {
+  agent any
+  parameters {
+    string(description: 'enter ami_id', name: 'AMI_ID', defaultValue: 'ami-0ad42f4f66f6c1cc9')
+    string(description: 'enter subnet id', name: 'SUBNET', defaultValue: 'subnet-0b57a25fd5a0448d0')
+    string(description: 'enter region name', name: 'REGION', defaultValue: 'ap-south-1')
+    string(description: 'enter Key name', name: 'NAME', defaultValue: 'Name')
+    string(description: 'enter Key-value-name', name: 'NAME_VALUE', defaultValue: '')
+    string(description: 'enter number of instances to launch', name: 'Number_Of_Instances', defaultValue: '1')
+    string(description: 'enter security-group-id', name: 'SECURITY_GROUP_ID', defaultValue: 'sg-088974251af4f8415')
+    choice(choices: ['CI_VPC', 'test1'], description: 'choose key pair?', name: 'KEYPAIR')
+    choice(choices: ['t2.micro', 't2.medium', 't2.large', 't2.xlarge', 't2.2xlarge'], description: 'choose the type of Instance', name: 'INSTANCE_TYPE' ) 
+    
+  }
+     
+  stages {
+    stage('build') {
+      steps {
+      
+        withCredentials([[
+          $class: 'AmazonWebServicesCredentialsBinding',
+          //credentialsId: 'aws-access',
+            credentialsId: 'aws key',
+          accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+          secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+        ]])
+        {
+       
+         sh 'echo how are you > hello'
+         sh 'cat hello'
+          sh '''
+echo ''#!/bin/bash'
+INITIAL_ARGS="$*"
+launch_ec2()
+{
+local AMI_ID="$1"
+local KEYPAIR="$2"
+local SUBNET="$3"
+local REGION="$4"
+local NAME="$5"
+local NAME_VALUE="$6"
+local INSTANCE_TYPE="$7"
+local SECURITY_GROUP_ID="$8"
+local Number_Of_Instances="$9"
+{
+echo """Your instance details is:-
+AMI_ID="${AMI_ID}"
+KEYPAIR_NAME="${KEYPAIR}"
+SUBNET_NAME="${SUBNET}"
+REGION_NAME="${REGION}"
+TAG_KEY="${NAME}"
+TAG_VALUE="${NAME_VALUE}"
+"""
+}
+#echo "aws ec2 run-instances --image-id "${AMI_ID}" --count 1 --instance-type "${INSTANCE_TYPE}" --key-name "${KEYPAIR}" --security-group-ids "${SECURITY_GROUP_ID}" --subnet-id "${SUBNET}" --region "${REGION}""
+aws ec2 run-instances --image-id ${AMI_ID} --count ${Number_Of_Instances} --instance-type ${INSTANCE_TYPE} --key-name ${KEYPAIR} --security-group-ids ${SECURITY_GROUP_ID} --subnet-id ${SUBNET} --region ${REGION} > ec2.txt
+grep 'InstanceId' ec2.txt | tr -d '", "' > InstanceId
+grep KeyName ec2.txt | tr -d '", "' > KeyName
+sed -i 's/:/=/g' InstanceId
+echo "aws ec2 create-tags --resources ""$"InstanceId" --tags Key=""$"NAME",Value=""$"NAME_VALUE" --region $REGION" >> InstanceId
+chmod +x InstanceId
+./InstanceId
+id=`head -1 InstanceId`
+id2=`head -1 KeyName`
+#echo "$id"
+echo " Instance is launched"
+}
+#launch_ec2 $AMI_ID $KEYPAIR $SUBNET $REGION $TAG_KEY $TAG_VALUE $INSTANCE_TYPE $SECURITY_GROUP_ID
+launch_ec2 $@
+' > properfunc.sh
+chmod +x properfunc.sh
+./properfunc.sh $AMI_ID $KEYPAIR $SUBNET $REGION $NAME $NAME_VALUE $INSTANCE_TYPE $SECURITY_GROUP_ID $Number_Of_Instances
+cat InstanceId
+''' 
+}
+}   
+}
+
+stage('slacknotification') {
+steps{    
+  script {
+    def my_id = ''
+    def my_id2 = ''
+dir ('/var/lib/jenkins/workspace/EC2_Launch-aws'){
+my_id = sh(script:"head -1 InstanceId", returnStdout: true)
+my_id2 = sh(script:"head -1 KeyName", returnStdout: true)
+echo "${my_id}"
+echo "${my_id2}"
+}
+echo "${my_id}"
+echo "${my_id2}"
+ slackSend baseUrl: 'https://opstree.slack.com/services/hooks/jenkins-ci/',
+ channel: '#ec2-test',
+ //channel: 'ot-meesho',
+ color: 'good',
+ message: 'Jenkins-Slack Intigrated Instance-id is Launched - The Instance ID is ' + my_id + my_id2,
+ teamDomain: 'opstree',
+ tokenCredentialId: 'slack-token-ec2-test'
+ //tokenCredentialId: 'slack-token'
+ }
+ }
+ }
+ }
+}
